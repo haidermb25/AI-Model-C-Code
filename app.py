@@ -18,12 +18,15 @@ urllib.request.urlretrieve(model_url, model_file)
 # Load vocabulary
 vocab = torch.load(vocab_file, map_location=torch.device("cpu"))  
 
-# Initialize Transformer model (MAKE SURE transformer_model.py is correct)
-model = TransformerSeq2Seq()  # Initialize the model
-
-# Load model weights
+# Load model weights properly
 state_dict = torch.load(model_file, map_location=torch.device("cpu"))  
-model.load_state_dict(state_dict)  # Load weights into the model
+
+# Check if state_dict is an OrderedDict (weights only)
+if isinstance(state_dict, torch.nn.Module):
+    model = state_dict  # If entire model is saved, use it directly
+else:
+    model = TransformerSeq2Seq()  # Initialize model
+    model.load_state_dict(state_dict)  # Load weights into model
 
 # Set model to evaluation mode
 model.eval()
