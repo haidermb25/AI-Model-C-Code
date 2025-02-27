@@ -1,7 +1,7 @@
 import streamlit as st
 import torch
 import urllib.request
-from transformer_model import TransformerSeq2Seq  # Import your Transformer model class
+from transformer_model import TransformerSeq2Seq  # Import your model class
 
 # URLs of the files
 vocab_url = "https://raw.githubusercontent.com/haidermb25/vocab/main/vocab.pth"
@@ -16,13 +16,14 @@ urllib.request.urlretrieve(vocab_url, vocab_file)
 urllib.request.urlretrieve(model_url, model_file)
 
 # Load vocabulary
-vocab = torch.load(vocab_file, weights_only=False)  # Make sure this file exists in the correct path
+vocab = torch.load(vocab_file, map_location=torch.device("cpu"))  
 
-# Initialize Transformer model
-model = TransformerSeq2Seq()  # Replace with your actual model class
+# Initialize Transformer model (MAKE SURE transformer_model.py is correct)
+model = TransformerSeq2Seq()  # Initialize the model
 
-# Load weights into the model
-model.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")))
+# Load model weights
+state_dict = torch.load(model_file, map_location=torch.device("cpu"))  
+model.load_state_dict(state_dict)  # Load weights into the model
 
 # Set model to evaluation mode
 model.eval()
@@ -30,25 +31,25 @@ model.eval()
 # Function to encode input sentence
 def encode_input(sentence):
     tokens = ["<sos>"] + sentence.lower().split() + ["<eos>"]
-    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]  # Handle unknown words
-    return torch.tensor(indices, dtype=torch.long).unsqueeze(0)  # Add batch dimension
+    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]  
+    return torch.tensor(indices, dtype=torch.long).unsqueeze(0)  
 
 # Function to generate code
 def predict(input_sentence, max_length=50):
     src = encode_input(input_sentence)
-    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long)  # Start sequence with <sos>
+    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long)  
 
     for _ in range(max_length):
         output = model(src, tgt)
-        next_token = output.argmax(dim=-1)[:, -1].item()  # Get the most probable token
+        next_token = output.argmax(dim=-1)[:, -1].item()  
 
-        if next_token == vocab["<eos>"]:  # Stop if <eos> token is generated
+        if next_token == vocab["<eos>"]:  
             break
 
         tgt = torch.cat([tgt, torch.tensor([[next_token]], dtype=torch.long)], dim=1)
 
     output_tokens = [list(vocab.keys())[idx] for idx in tgt.squeeze(0).tolist()]
-    return " ".join(output_tokens[1:])  # Remove <sos> token
+    return " ".join(output_tokens[1:])  
 
 # Streamlit UI
 st.title("Pseudocode to Code Generator 🚀")
