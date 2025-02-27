@@ -1,68 +1,95 @@
-import streamlit as st
 import torch
-import urllib.request
-from transformer_model import TransformerSeq2Seq  # Import your model class
+import torch.nn as nn
+from torchtext.vocab import Vocab
+import spacy
+import streamlit as st
+import requests
+import os
 
-# URLs of the files
-vocab_url = "https://raw.githubusercontent.com/haidermb25/vocab/main/vocab.pth"
-model_url = "https://raw.githubusercontent.com/haidermb25/AI-Model-C-Code/main/transformer_seq2seq.pth"
+# File URLs (Replace with your actual GitHub RAW URLs if files are small)
+VOCAB_URL = "https://raw.githubusercontent.com/haidermb25/vocab/main/vocab.pth"
+MODEL_URL= "https://raw.githubusercontent.com/haidermb25/AI-Model-C-Code/main/transformer_seq2seq.pth"
 
-# Local filenames
-vocab_file = "vocab.pth"
-model_file = "transformer_seq2seq.pth"
+# File Paths
+VOCAB_PATH = "vocab.pth"
+MODEL_PATH = "transformer_seq2seq.pth"
 
-# Download the files
-urllib.request.urlretrieve(vocab_url, vocab_file)
-urllib.request.urlretrieve(model_url, model_file)
+# Function to download files
+def download_file(url, file_path):
+    if not os.path.exists(file_path):
+        with st.spinner(f"Downloading {file_path}..."):
+            response = requests.get(url, stream=True)
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
 
-# Load vocabulary
-vocab = torch.load(vocab_file, map_location=torch.device("cpu"))
+# Download files if not present
+download_file(VOCAB_URL, VOCAB_PATH)
+download_file(MODEL_URL, MODEL_PATH)
 
-# Load model file
-model_data = torch.load(model_file, map_location=torch.device("cpu"))
+# Load tokenizer
+spacy_en = spacy.load("en_core_web_sm")
 
-# Check if model_data is an instance of a PyTorch model (full model)
-if isinstance(model_data, torch.nn.Module):
-    model = model_data  # The entire model is saved, use it directly
-else:
-    model = TransformerSeq2Seq()  # Initialize model
-    model.load_state_dict(model_data)  # Load only weights
+# Load saved vocab
+vocab = torch.load(VOCAB_PATH)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Set model to evaluation mode
+# Define the model
+class TransformerSeq2Seq(nn.Module):
+    def __init__(self, vocab_size, embed_dim=256, num_heads=8, hidden_dim=512, num_layers=2):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_dim)
+        self.transformer = nn.Transformer(
+            d_model=embed_dim, 
+            nhead=num_heads, 
+            num_encoder_layers=num_layers, 
+            num_decoder_layers=num_layers
+        )
+        self.fc_out = nn.Linear(embed_dim, vocab_size)
+
+    def forward(self, src, tgt):
+        src_emb = self.embedding(src)
+        tgt_emb = self.embedding(tgt)
+        output = self.transformer(src_emb, tgt_emb)
+        return self.fc_out(output)
+
+# Load model
+model = TransformerSeq2Seq(len(vocab)).to(device)
+model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
 model.eval()
 
-# Function to encode input sentence
-def encode_input(sentence):
-    tokens = ["<sos>"] + sentence.lower().split() + ["<eos>"]
-    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]
-    return torch.tensor(indices, dtype=torch.long).unsqueeze(0)
+# Tokenizer
+def tokenize(sentence):
+    return [token.text for token in spacy_en(str(sentence).lower())]
 
-# Function to generate code
-def predict(input_sentence, max_length=50):
-    src = encode_input(input_sentence)
-    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long)
+# Encode input
+def encode_input(text):
+    tokens = tokenize(text)
+    encoded = torch.tensor([vocab["<sos>"]] + [vocab[token] for token in tokens] + [vocab["<eos>"]], dtype=torch.long)
+    return encoded.unsqueeze(1).to(device)  # Add batch dimension
+
+# Decode output
+def decode_output(output_tokens):
+    return " ".join([vocab.lookup_token(idx) for idx in output_tokens if idx not in [vocab["<sos>"], vocab["<eos>"], vocab["<pad>"]]])
+
+# Generate output
+def generate_output(input_text, max_length=50):
+    src = encode_input(input_text)
+    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long).to(device)
 
     for _ in range(max_length):
         output = model(src, tgt)
-        next_token = output.argmax(dim=-1)[:, -1].item()
-
+        next_token = output.argmax(dim=-1)[-1, 0].item()
         if next_token == vocab["<eos>"]:
             break
+        tgt = torch.cat([tgt, torch.tensor([[next_token]], dtype=torch.long).to(device)], dim=0)
 
-        tgt = torch.cat([tgt, torch.tensor([[next_token]], dtype=torch.long)], dim=1)
-
-    output_tokens = [list(vocab.keys())[idx] for idx in tgt.squeeze(0).tolist()]
-    return " ".join(output_tokens[1:])
+    return decode_output(tgt.squeeze().tolist())
 
 # Streamlit UI
-st.title("Pseudocode to Code Generator 🚀")
-st.write("Enter your pseudocode below:")
-
-# User input
-input_text = st.text_area("Pseudocode:", "create string s")
-
-# Generate button
-if st.button("Generate Code"):
-    output_text = predict(input_text)
-    st.subheader("Generated Code:")
-    st.code(output_text, language="python")
+st.title("Transformer Text Generator")
+input_text = st.text_input("Enter a sentence:")
+if st.button("Generate"):
+    output_text = generate_output(input_text)
+    st.write(f"**Output:** {output_text}")
