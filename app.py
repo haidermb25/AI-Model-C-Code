@@ -2,7 +2,7 @@ import streamlit as st
 import torch
 
 # Load vocabulary
-vocab = torch.load("vocab.pth")  # Make sure this file exists in the correct path
+vocab = torch.load("vocab.pth", weights_only=False)  # Make sure this file exists in the correct path
 
 # Load Transformer model
 model = torch.load("transformer_seq2seq.pth", map_location=torch.device("cpu"))
