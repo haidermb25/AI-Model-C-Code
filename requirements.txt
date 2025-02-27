@@ -1,6 +1,6 @@
 streamlit
-torch
-torchtext
+torch==2.0.1
+torchtext==0.15.1
 torchvision
 torchaudio
 spacy
