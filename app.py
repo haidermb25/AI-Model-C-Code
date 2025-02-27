@@ -1,6 +1,7 @@
 import streamlit as st
 import torch
 import urllib.request
+from transformer_model import TransformerSeq2Seq  # Import your Transformer model class
 
 # URLs of the files
 vocab_url = "https://raw.githubusercontent.com/haidermb25/vocab/main/vocab.pth"
@@ -17,9 +18,14 @@ urllib.request.urlretrieve(model_url, model_file)
 # Load vocabulary
 vocab = torch.load(vocab_file, weights_only=False)  # Make sure this file exists in the correct path
 
-# Load Transformer model
-model = torch.load(model_file, map_location=torch.device("cpu"))
-model.eval()  # Set model to evaluation mode
+# Initialize Transformer model
+model = TransformerSeq2Seq()  # Replace with your actual model class
+
+# Load weights into the model
+model.load_state_dict(torch.load(model_file, map_location=torch.device("cpu")))
+
+# Set model to evaluation mode
+model.eval()
 
 # Function to encode input sentence
 def encode_input(sentence):
