@@ -1,4 +1,6 @@
-torch==2.2.0
-torchtext
+streamlit
+torch
 torchvision
 torchaudio
+spacy
+requests
