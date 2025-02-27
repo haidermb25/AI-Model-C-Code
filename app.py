@@ -5,7 +5,7 @@ import torch
 vocab = torch.load("https://github.com/haidermb25/AI-Model-C-Code.git/vocab.pth", weights_only=False)  # Make sure this file exists in the correct path
 
 # Load Transformer model
-model = torch.load("transformer_seq2seq.pth", map_location=torch.device("cpu"))
+model = torch.load("https://github.com/haidermb25/AI-Model-C-Code.git/transformer_seq2seq.pth", map_location=torch.device("cpu"))
 model.eval()  # Set model to evaluation mode
 
 # Function to encode input sentence
