@@ -1,11 +1,24 @@
 import streamlit as st
 import torch
+import urllib.request
+
+# URLs of the files
+vocab_url = "https://raw.githubusercontent.com/haidermb25/vocab/main/vocab.pth"
+model_url = "https://raw.githubusercontent.com/haidermb25/AI-Model-C-Code/main/transformer_seq2seq.pth"
+
+# Local filenames
+vocab_file = "vocab.pth"
+model_file = "transformer_seq2seq.pth"
+
+# Download the files
+urllib.request.urlretrieve(vocab_url, vocab_file)
+urllib.request.urlretrieve(model_url, model_file)
 
 # Load vocabulary
-vocab = torch.load("https://github.com/haidermb25/vocab.git/vocab.pth", weights_only=False)  # Make sure this file exists in the correct path
+vocab = torch.load(vocab_file, weights_only=False)  # Make sure this file exists in the correct path
 
 # Load Transformer model
-model = torch.load("https://github.com/haidermb25/transformer_seq2seq.git/transformer_seq2seq.pth", map_location=torch.device("cpu"))
+model = torch.load(model_file, map_location=torch.device("cpu"))
 model.eval()  # Set model to evaluation mode
 
 # Function to encode input sentence
