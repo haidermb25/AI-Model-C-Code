@@ -16,17 +16,17 @@ urllib.request.urlretrieve(vocab_url, vocab_file)
 urllib.request.urlretrieve(model_url, model_file)
 
 # Load vocabulary
-vocab = torch.load(vocab_file, map_location=torch.device("cpu"))  
+vocab = torch.load(vocab_file, map_location=torch.device("cpu"))
 
-# Load model weights properly
-state_dict = torch.load(model_file, map_location=torch.device("cpu"))  
+# Load model file
+model_data = torch.load(model_file, map_location=torch.device("cpu"))
 
-# Check if state_dict is an OrderedDict (weights only)
-if isinstance(state_dict, torch.nn.Module):
-    model = state_dict  # If entire model is saved, use it directly
+# Check if model_data is an instance of a PyTorch model (full model)
+if isinstance(model_data, torch.nn.Module):
+    model = model_data  # The entire model is saved, use it directly
 else:
     model = TransformerSeq2Seq()  # Initialize model
-    model.load_state_dict(state_dict)  # Load weights into model
+    model.load_state_dict(model_data)  # Load only weights
 
 # Set model to evaluation mode
 model.eval()
@@ -34,25 +34,25 @@ model.eval()
 # Function to encode input sentence
 def encode_input(sentence):
     tokens = ["<sos>"] + sentence.lower().split() + ["<eos>"]
-    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]  
-    return torch.tensor(indices, dtype=torch.long).unsqueeze(0)  
+    indices = [vocab.get(token, vocab["<unk>"]) for token in tokens]
+    return torch.tensor(indices, dtype=torch.long).unsqueeze(0)
 
 # Function to generate code
 def predict(input_sentence, max_length=50):
     src = encode_input(input_sentence)
-    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long)  
+    tgt = torch.tensor([[vocab["<sos>"]]], dtype=torch.long)
 
     for _ in range(max_length):
         output = model(src, tgt)
-        next_token = output.argmax(dim=-1)[:, -1].item()  
+        next_token = output.argmax(dim=-1)[:, -1].item()
 
-        if next_token == vocab["<eos>"]:  
+        if next_token == vocab["<eos>"]:
             break
 
         tgt = torch.cat([tgt, torch.tensor([[next_token]], dtype=torch.long)], dim=1)
 
     output_tokens = [list(vocab.keys())[idx] for idx in tgt.squeeze(0).tolist()]
-    return " ".join(output_tokens[1:])  
+    return " ".join(output_tokens[1:])
 
 # Streamlit UI
 st.title("Pseudocode to Code Generator 🚀")
