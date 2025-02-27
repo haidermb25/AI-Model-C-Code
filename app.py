@@ -2,7 +2,7 @@ import streamlit as st
 import torch
 
 # Load vocabulary
-vocab = torch.load("https://github.com/haidermb25/AI-Model-C-Code.git/vocab.pth", weights_only=False)  # Make sure this file exists in the correct path
+vocab = torch.load("https://github.com/haidermb25/vocab.git/vocab.pth", weights_only=False)  # Make sure this file exists in the correct path
 
 # Load Transformer model
 model = torch.load("https://github.com/haidermb25/AI-Model-C-Code.git/transformer_seq2seq.pth", map_location=torch.device("cpu"))
